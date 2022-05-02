@@ -8,7 +8,7 @@ Prof. Dr. Bart Massey
 20 April 2022
 
 Usage: ./halfrate.py path/to/file.wav
-expected to exist: ./hw-resample/coeffs.txt
+expected to exist in current working dir: coeffs.txt
 
 In homework two, we learned to resample a sound file to fewer sps, specifically to half the rate of the input file. This involves filtering out the higher frequencies, then recording every other signal into a new file. 
 

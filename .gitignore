@@ -1,3 +1,9 @@
+.DS_Store
+venv/
+notes/
+wavfile/
+homework/hw2/hw-resample/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

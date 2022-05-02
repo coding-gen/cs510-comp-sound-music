@@ -123,7 +123,7 @@ if __name__ == "__main__":
     assert sys.argv[1], "Input file required."
     inputfile = sys.argv[1]
 
-    result = filter('hw-resample/coeffs.txt', inputfile)
+    result = filter('coeffs.txt', inputfile)
     decimate(result, inputfile)
 
 
