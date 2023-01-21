@@ -27,8 +27,8 @@ https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.triang
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.rfft.html
 https://docs.scipy.org/doc/scipy/reference/generated/scipy.fft.fftfreq.html
 
-How to apply the triangular window by convolving came from:
-https://swharden.com/blog/2020-09-23-signal-filtering-in-python/
+I used examples from the numpy docs: 
+https://numpy.org/doc/stable/reference/generated/numpy.argmax.html
 
 Read about applying a window here: 
 https://download.ni.com/evaluation/pxi/Understanding%20FFTs%20and%20Windowing.pdf
@@ -39,12 +39,19 @@ https://realpython.com/playing-and-recording-sound-python/#pyaudio_1
 
 import wave, pyaudio, struct
 import sys
-from math import pi, sin
-from scipy.fft import fft, rfft, fftfreq
-from scipy.signal.windows import triang
 import numpy as np
+from scipy.fft import fft, rfft, fftfreq, fftshift
+from scipy.signal.windows import triang
+import matplotlib.pyplot as plt
 
+import math, sounddevice
+import scipy.io.wavfile as wavfile
+import scipy.signal.windows as window
 
+#sounddevice is modern of pyaudio
+
+rate = 48000
+nchunk = 8192
 # get magnitude of FFT, not phase, use abs() to get the magnitude of complex number
 # ignore negative frequencies in the complex input fft for realtime input
 # find the largest bin: numpy.argmax() 
@@ -61,6 +68,12 @@ import numpy as np
 def get_trim(frameCount):
     # Trim the file to the first 2^17 samples (a few seconds) if it is longer than that. 
     # If it is shorter, trim to the largest possible power of 2.
+
+    # if nchunk >= 2**17: #bart
+    #    nchunk = 2**17 # bart
+    # x = int(np.log2(nchunk)) #bart's code
+    # nchunk = 2**x #bart
+    # wav = (wav[:nchunk] / 32768).astype(np.float32) #convert to float to get it ready to read #bart
     trimmedSampleCount = 2 # 2^1
     for i in range(16):
         if frameCount > trimmedSampleCount:
@@ -72,6 +85,8 @@ def get_frequency(inputfile, live=False):
     trimmedSampleCount = 0
 
     if not live: 
+        # (wrate, wav) = wavfile.read(sys.argv[1]) # from bart's code
+        # nchunk = len(wav) #bart's code
         obj = wave.open(inputfile,'rb')
         frameCount = obj.getnframes()
         CHUNK = 1024
@@ -115,15 +130,23 @@ def get_frequency(inputfile, live=False):
 
     # Find the magnitude but discard the phase.
     transformedMag = [np.abs(x) for x in transformed]
+    maximum = 3
 
     # Find the largest bin in the DFT.
-    largestBin = np.argmax(transformedMag)
+    largestBinIndex = np.argmax(transformedMag)
 
     # Report the center frequency of that bin.
     # a maximum precision of 1 decimal place
-    freq = np.fft.fftfreq(trimmedSampleCount)
-    print(f"Largest bin: {largestBin}, Center frequency: {freq}")
 
+    # freqs = fft.rfftfreq(nchunk, 1/rate) #bart
+    # returns array of bin-centered frequencies #bart
+    # tell it the count bins and inverse frequency rate #bart
+    freq = np.fft.fftfreq(trimmedSampleCount)
+
+    print(f"Largest bin index: {largestBinIndex}")
+    print(f"Largest bin value: {transformedMag[largestBinIndex]}")
+    print(f"Center frequency: {freq}")
+    print(f"Center frequency of largest bin: {freq[largestBinIndex]}")
 
 def get_live_frequency():
     #start taking samples from the live input. 
@@ -134,41 +157,35 @@ def get_live_frequency():
     seconds = 3
     noteSamples = 8192
 
-    p = pyaudio.PyAudio()
-    stream = p.open(format=sample_format,
-                channels=channels,
-                rate=fs,
-                frames_per_buffer=chunk,
-                input=True)
-    
-    frames = []
-    i = 1
-    while true:
+    while True:
+        p = pyaudio.PyAudio()
+
         # For every 8192 samples call get_frequency()
-        data = stream.read(chunk)
-        frames.append(data)
+        stream = p.open(format=sample_format,
+            channels=channels,
+            rate=fs,
+            frames_per_buffer=chunk,
+            input=True)
+        frames = []
 
-        if i % noteSamples == 0:
-            get_frequency(frames, True)
-            frames = []
-        i += 1
+        for i in range(8192):
+            data = stream.read(chunk)
+            frames.append(data)
+        get_frequency(frames, True)
 
-    stream.stop_stream()
-    stream.close()
-    p.terminate()
+        stream.stop_stream()
+        stream.close()
+
+        p.terminate()
 
 
 
 if __name__ == "__main__":
 
-    # Ignore noise
-    # Account for harmonics
-
     if len(sys.argv) > 1: 
         inputfile = sys.argv[1]
         get_frequency(inputfile)
     else: 
-        print("live")
         get_live_frequency()
 
 
